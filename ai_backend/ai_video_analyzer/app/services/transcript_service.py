@@ -29,7 +29,6 @@ def download_audio(video_url: str) -> str:
         info = ydl.extract_info(video_url, download=True)
         downloaded_file = os.path.join(AUDIO_DIR, f"{info['id']}.mp3")
         if not os.path.exists(downloaded_file):
-            # fallback to uuid file
             downloaded_file = os.path.join(AUDIO_DIR, f"{unique_id}.mp3")
         return downloaded_file
 
@@ -46,12 +45,28 @@ def get_transcript(video_url: str) -> dict:
         os.remove(audio_file)
         print(f"[TRANSCRIPT] Cleaned up: {audio_file}")
 
+        segments = result.get("segments", [])
+        cleaned_segments = [
+            {
+                "id": seg.get("id"),
+                "start": seg.get("start"),
+                "end": seg.get("end"),
+                "text": seg.get("text")
+            }
+            for seg in segments if "text" in seg
+        ]
+
+        full_text = " ".join(seg["text"] for seg in cleaned_segments)
+
         return {
-            "text": result.get("text", ""),
-            "segments": result.get("segments", []),
+            "text": full_text.strip(),
+            "segments": cleaned_segments,
             "language": result.get("language", "unknown")
         }
 
     except Exception as e:
         print(f"[TRANSCRIPT] Error occurred: {e}")
         return {"error": str(e)}
+
+    finally:
+        print("[TRANSCRIPT] Task completed.")
